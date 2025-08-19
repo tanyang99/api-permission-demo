@@ -126,7 +126,7 @@ public class PermissionInterceptor implements HandlerInterceptor {
             }
 
             // 提取参数值
-            List<String> values = extractor.extract(request, rule.getParamName(), rule.getParseConfig(), rule.getSource(),useCachedRequest);
+            List<String> values = extractor.extract(request, rule.getParamName(), rule.getParseConfig(), rule.getSource(), useCachedRequest);
 
             // 构建目标参数
             PermissionContext.TargetParameter target = new PermissionContext.TargetParameter();
@@ -152,6 +152,9 @@ public class PermissionInterceptor implements HandlerInterceptor {
             // 所有参数必须通过验证
             for (PermissionContext.TargetParameter target : targets) {
                 PermissionValidator validator = validatorFactory.getValidator(target.getValidatorId());
+                if (validator == null) {
+                    throw new IllegalArgumentException("未找到验证器：" + target.getValidatorId());
+                }
                 if (!validator.validate(principal, target)) {
                     return false;
                 }
@@ -161,6 +164,9 @@ public class PermissionInterceptor implements HandlerInterceptor {
             // 任一参数通过验证
             for (PermissionContext.TargetParameter target : targets) {
                 PermissionValidator validator = validatorFactory.getValidator(target.getValidatorId());
+                if (validator == null) {
+                    throw new IllegalArgumentException("未找到验证器：" + target.getValidatorId());
+                }
                 if (validator.validate(principal, target)) {
                     return true;
                 }
