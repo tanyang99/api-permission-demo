@@ -17,14 +17,28 @@ public enum ExtractorType {
             log.warn("解析类型配置为空，使用默认值:NONE");
             return NONE;
         }
+        // 如果传入的字符串是 NONE，直接返回 NONE
+        if (str.equalsIgnoreCase("NONE")) {
+            return NONE;
+        }
         try {
             // 优先匹配已有枚举（DEFAULT/JSON_PATH等）
             return valueOf(str.toUpperCase());
         } catch (IllegalArgumentException e) {
-            // 自动为非枚举值拼接custom_前缀，视为自定义类型
-            String customMethod = CUSTOM.name() + "#" + str.trim();
-            log.info("自动识别为自定义解析方式: {}", customMethod);
+            // 自定义的解析方式，返回CUSTOM
+            log.info("未知的解析类型: {}, 自动识别为自定义解析方式", str);
             return CUSTOM;
         }
+    }
+
+    /**
+     * 获取解析器类型
+     */
+    public static String getExtractorType(String str) {
+        ExtractorType extractorType = ExtractorType.fromString(str);
+        if (extractorType.equals(ExtractorType.CUSTOM)) {
+            return extractorType.name() + "#" + str;
+        }
+        return extractorType.name();
     }
 }
