@@ -17,7 +17,7 @@ public class PermissionContext {
      * 初始化上下文
      */
     public static void init() {
-        THREAD_LOCAL.set(new ContextData());
+        setContextData(new ContextData());
     }
 
     /**
