@@ -3,42 +3,29 @@ package com.security.extractor;
 import com.security.enums.ExtractorType;
 import com.security.enums.ParamSource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-@Order(1)
 @Component
 @Slf4j
 public class DefaultExtractor implements ParameterExtractor {
 
-    /**
-     * 提取请求中的参数（支持QUERY/HEADER/COOKIE来源）
-     *
-     * @param request        HTTP请求对象
-     * @param paramName      参数名称
-     * @param parseConfig    预留配置（默认提取暂不使用）
-     * @param source         参数来源（QUERY/HEADER/COOKIE）
-     * @param useCachedRequest 是否使用缓存请求（默认提取无需缓存，此参数忽略）
-     * @return 提取的参数值列表，无结果时返回空列表
-     */
+    // 缓存请求对应的Cookie Map（key: request.hashCode()，避免内存泄漏使用WeakHashMap）
+    private final Map<Integer, Map<String, String>> cookieCache = new WeakHashMap<>();
+
     @Override
     public List<String> extract(HttpServletRequest request, String paramName, String parseConfig,
                                 ParamSource source, boolean useCachedRequest) {
-        // 校验参数名称有效性
         if (!StringUtils.hasText(paramName)) {
             log.error("参数名称为空，无法提取");
             return Collections.emptyList();
         }
 
-        // 根据参数来源提取值
         List<String> values;
         switch (source) {
             case QUERY:
@@ -59,6 +46,37 @@ public class DefaultExtractor implements ParameterExtractor {
         return values;
     }
 
+    /**
+     * 提取Cookie值（优化：缓存为Map减少重复遍历）
+     */
+    private List<String> extractCookieValue(HttpServletRequest request, String paramName) {
+        // 1. 从缓存获取当前请求的Cookie Map，不存在则构建
+        Map<String, String> cookieMap = cookieCache.computeIfAbsent(
+                request.hashCode(),  // 用request的哈希值作为缓存key
+                k -> buildCookieMap(request.getCookies())  // 构建Cookie键值对Map
+        );
+
+        // 2. 直接通过参数名获取Cookie值
+        String value = cookieMap.get(paramName);
+        return value != null ? Collections.singletonList(value) : Collections.emptyList();
+    }
+
+    /**
+     * 将Cookie数组转换为Map<String, String>
+     */
+    private Map<String, String> buildCookieMap(Cookie[] cookies) {
+        if (cookies == null || cookies.length == 0) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, String> cookieMap = new HashMap<>(cookies.length);
+        for (Cookie cookie : cookies) {
+            cookieMap.put(cookie.getName(), cookie.getValue());
+        }
+        return cookieMap;
+    }
+
+    // 其他方法保持不变...
     @Override
     public String supportParseMethod() {
         return ExtractorType.DEFAULT.name();
@@ -69,9 +87,6 @@ public class DefaultExtractor implements ParameterExtractor {
         return Arrays.asList(ParamSource.QUERY, ParamSource.HEADER, ParamSource.COOKIE);
     }
 
-    /**
-     * 提取查询参数（URL中的?param=value部分）
-     */
     private List<String> extractQueryParams(HttpServletRequest request, String paramName) {
         String[] paramValues = request.getParameterValues(paramName);
         if (paramValues == null || paramValues.length == 0) {
@@ -80,31 +95,11 @@ public class DefaultExtractor implements ParameterExtractor {
         return new ArrayList<>(Arrays.asList(paramValues));
     }
 
-    /**
-     * 提取请求头参数
-     */
     private List<String> extractHeaderParam(HttpServletRequest request, String paramName) {
         String headerValue = request.getHeader(paramName);
         if (headerValue == null) {
             return Collections.emptyList();
         }
         return Collections.singletonList(headerValue);
-    }
-
-    /**
-     * 提取Cookie值
-     */
-    private List<String> extractCookieValue(HttpServletRequest request, String paramName) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return Collections.emptyList();
-        }
-
-        for (Cookie cookie : cookies) {
-            if (paramName.equals(cookie.getName())) {
-                return Collections.singletonList(cookie.getValue());
-            }
-        }
-        return Collections.emptyList();
     }
 }
