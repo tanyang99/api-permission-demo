@@ -389,5 +389,10 @@ api:
 3. **参数多值处理**：提取器支持返回多值参数（如QUERY参数`?ids=1&ids=2`），验证器需处理`List<String>`类型的参数值。
 4. **自定义组件扫描**：自定义提取器和验证器必须放在Spring扫描路径下（标注`@Component`），否则无法被工厂类注册。
 5. **性能考虑**：请求体解析（如JSON/XML）会产生额外开销，建议仅对敏感接口启用验证。
-
+6. **[ParamSource.java](src/main/java/com/security/enums/ParamSource.java)**
+    - 定义参数来源的枚举类型，包括`PATH`、`BODY`、`QUERY`、`HEADER`、`COOKIE`、`SESSION`。
+    - 包含`supportSources()`方法，用于判断当前枚举值是否支持特定的参数来源，不支持其他类型的参数来源，如果自定义服务会启动失败。
+7. **[ExtractorType.java](src/main/java/com/security/enums/ExtractorType.java)**
+    - 定义参数提取器的枚举类型，包括`DEFAULT`、`JSON_PATH`、`PATH_MATCH`、`CUSTOM`。如果对相同的ParamSource提供不同解析器（CUSTOM除外），会自动覆盖默认的，
+    - 如果需要支持多个解析器，需要自己实现扩展能力
 
