@@ -105,11 +105,11 @@ api:
             source: "BODY"  # 从请求体提取
             parse-method: "JSON_PATH"  # 使用JSONPath解析
             parse-config: "$.userId"  # JSONPath表达式（如请求体中{"userId":123}）
-            validatorId: "staffId-userId"  # 关联的验证器ID
+            validator-id: "staffId-userId"  # 关联的验证器ID
           - param-name: "classId"  # 另一个目标参数
             source: "QUERY"  # 从查询参数提取
             parse-method: "DEFAULT"  # 默认解析方式
-            validatorId: "staffId-classId"  # 关联的验证器ID
+            validator-id: "staffId-classId"  # 关联的验证器ID
         multi-param-mode: "ANY_MATCH"  # 多参数验证模式：ANY_MATCH（任一通过则放行）
 ```
 
@@ -335,7 +335,7 @@ api:
             source: "BODY"  # 从XML请求体提取
             parse-method: "XML_PATH"  # 使用自定义XmlParamExtractor
             parse-config: "/root/dept/id"  # XML XPath表达式
-            validatorId: "staff-dept-validator"  # 使用自定义验证器
+            validator-id: "staff-dept-validator"  # 使用自定义验证器
         multi-param-mode: "ALL_MATCH"
 ```
 
@@ -360,7 +360,7 @@ api:
             source: "BODY"  # 参数来源
             parse-method: "JSON_PATH"  # 解析方式
             parse-config: "$.resourceId"  # JSONPath表达式（JSON_PATH必填）
-            validatorId: "staff-resource-validator"  # 验证器ID（不能为空）
+            validator-id: "staff-resource-validator"  # 验证器ID（不能为空）
         multi-param-mode: "ALL_MATCH"  # 多参数模式（ALL_MATCH/ANY_MATCH）
 ```
 
