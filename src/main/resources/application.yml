@@ -33,3 +33,16 @@ api:
             parse-method: "PATH_MATCH"
             validatorId: "staffId-id"
         multi-param-mode: "ANY_MATCH"  # 多参数验证模式（枚举对应值）
+      - uri-pattern: "/employee/classes/{classId}?ip={ip}&token={token}"  # Ant风格URI
+        enabled: true  # 规则开关
+        principal-param: # 主体参数（当前操作者标识）
+          name: "employee"
+          source: "QUERY"  # 参数来源（枚举对应值）
+        param-rules: # 需验证的目标参数列表
+        - param-name: "classId"
+          source: "PATH"
+          validatorId: "employee-class-validator"  # 关联验证器ID
+        - param-name: "ip"
+          source: "QUERY"
+          validatorId: "employee-ip-validator"
+        multi-param-mode: "ANY_MATCH"  # 多参数验证模式（枚举对应值）

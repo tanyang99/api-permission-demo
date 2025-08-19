@@ -10,6 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -98,7 +99,7 @@ public class ApiPermissionConfig implements InitializingBean {
 
             // 未启用的规则也验证基础结构（避免配置完全无效）
             if (!enabled) {
-                log.debug("规则[{}]未启用，仅验证基础配置", uriPattern);
+                log.warn("规则[{}]未启用，仅验证基础配置", uriPattern);
             }
 
             // 1. 验证uriPattern非空及格式
@@ -180,23 +181,33 @@ public class ApiPermissionConfig implements InitializingBean {
             }
 
             // 2. 验证source非空及合法性
+            boolean isSourceValid = false;
             if (source == null) {
                 errors.add("source不能为空（需指定PATH/BODY/QUERY等）");
             } else {
-                // 验证source是否为枚举中的有效值（防止反序列化异常）
-                boolean isValidSource = false;
+                // 验证source是否为枚举中的有效值
                 for (ParamSource s : ParamSource.values()) {
                     if (s == source) {
-                        isValidSource = true;
+                        isSourceValid = true;
                         break;
                     }
                 }
-                if (!isValidSource) {
+                if (!isSourceValid) {
                     errors.add("source值无效：" + source);
+                } else {
+                    // 当source有效且parseMethod为空时，自动赋值
+                    if (parseMethod == null || parseMethod.trim().isEmpty()) {
+                        if (ParamSource.PATH.equals(source)) {
+                            parseMethod = ExtractorType.PATH_MATCH.name();
+                        } else if (Arrays.asList(ParamSource.QUERY, ParamSource.HEADER, ParamSource.COOKIE).contains(source)) {
+                            parseMethod = ExtractorType.DEFAULT.name();
+                        }
+                        // 其他source（如BODY）不自动赋值，保留后续验证
+                    }
                 }
             }
 
-            // 3. 验证parseMethod非空及合法性
+            // 3. 验证parseMethod非空及合法性（此时可能已被自动赋值）
             if (parseMethod == null || parseMethod.trim().isEmpty()) {
                 errors.add("parseMethod不能为空（需指定解析方式）");
             } else {
@@ -206,20 +217,14 @@ public class ApiPermissionConfig implements InitializingBean {
                 }
             }
 
-//            // 4. 验证PATH来源时的URI参数占位符（需结合父级规则的uriPattern，此处先做基础判断）
-//            if (source == ParamSource.PATH && name != null && !name.trim().isEmpty()) {
-//                // 注意：uriPattern在父级规则中，此处无法直接验证，需在Rule.validate()中补充
-//                errors.add("来源为PATH时，uriPattern必须包含参数{" + name + "}");
-//            }
-
-            // 5. 验证解析方式与来源的匹配性
-            if (source != null && parseMethod != null && !parseMethod.trim().isEmpty()) {
+            // 4. 验证解析方式与来源的匹配性
+            if (isSourceValid && parseMethod != null && !parseMethod.trim().isEmpty()) {
                 if (!isValidCombination(source, parseMethod)) {
                     errors.add("来源[" + source + "]不支持解析方式[" + parseMethod + "]");
                 }
             }
 
-            // 6. 验证必要的parseConfig
+            // 5. 验证必要的parseConfig
             if (parseMethod != null && !parseMethod.trim().isEmpty()) {
                 ExtractorType extractorType = ExtractorType.fromString(parseMethod);
                 if (ExtractorType.JSON_PATH.equals(extractorType) && (parseConfig == null || parseConfig.trim().isEmpty())) {
@@ -240,7 +245,7 @@ public class ApiPermissionConfig implements InitializingBean {
 
             switch (source) {
                 case PATH:
-                    return ExtractorType.DEFAULT.equals(extractorType) || ExtractorType.PATH_MATCH.equals(extractorType);
+                    return ExtractorType.PATH_MATCH.equals(extractorType);
                 case BODY:
                     return ExtractorType.JSON_PATH.equals(extractorType);
                 case QUERY:
@@ -276,22 +281,33 @@ public class ApiPermissionConfig implements InitializingBean {
             }
 
             // 2. 验证source非空及合法性
+            boolean isSourceValid = false;
             if (source == null) {
                 errors.add("source不能为空（需指定PATH/BODY/QUERY等）");
             } else {
-                boolean isValidSource = false;
+                // 验证source是否为枚举中的有效值
                 for (ParamSource s : ParamSource.values()) {
                     if (s == source) {
-                        isValidSource = true;
+                        isSourceValid = true;
                         break;
                     }
                 }
-                if (!isValidSource) {
+                if (!isSourceValid) {
                     errors.add("source值无效：" + source);
+                } else {
+                    // 当source有效且parseMethod为空时，自动赋值
+                    if (parseMethod == null || parseMethod.trim().isEmpty()) {
+                        if (ParamSource.PATH.equals(source)) {
+                            parseMethod = ExtractorType.PATH_MATCH.name();
+                        } else if (Arrays.asList(ParamSource.QUERY, ParamSource.HEADER, ParamSource.COOKIE).contains(source)) {
+                            parseMethod = ExtractorType.DEFAULT.name();
+                        }
+                        // 其他source（如BODY）不自动赋值，保留后续验证
+                    }
                 }
             }
 
-            // 3. 验证parseMethod非空及合法性
+            // 3. 验证parseMethod非空及合法性（此时可能已被自动赋值）
             if (parseMethod == null || parseMethod.trim().isEmpty()) {
                 errors.add("parseMethod不能为空");
             } else {
@@ -307,7 +323,7 @@ public class ApiPermissionConfig implements InitializingBean {
             }
 
             // 5. 验证解析方式与来源的匹配性
-            if (source != null && parseMethod != null && !parseMethod.trim().isEmpty()) {
+            if (isSourceValid && parseMethod != null && !parseMethod.trim().isEmpty()) {
                 if (!isValidCombination(source, parseMethod)) {
                     errors.add("来源[" + source + "]不支持解析方式[" + parseMethod + "]");
                 }
