@@ -369,9 +369,9 @@ api:
 1. **uri-pattern**：Ant风格的URI匹配模式，如`/users/{id}/**`（`*`匹配一级路径，`**`匹配多级路径），必须以`/`开头。
 
 2. **principal-param.source与parse-method匹配关系**：
-    - `PATH`：仅支持`PATH_MATCH`或`DEFAULT`
+    - `PATH`：仅支持`PATH_MATCH`，parse-method 可选
     - `BODY`：支持`JSON_PATH`（内置）或`CUSTOM`（自定义）
-    - `QUERY/HEADER/COOKIE`：仅支持`DEFAULT`
+    - `QUERY/HEADER/COOKIE`：仅支持`DEFAULT`，parse-method 可选
 
 3. **parse-config**：
     - `JSON_PATH`：必填，如`$.user.id`（JSONPath表达式）
@@ -389,10 +389,20 @@ api:
 3. **参数多值处理**：提取器支持返回多值参数（如QUERY参数`?ids=1&ids=2`），验证器需处理`List<String>`类型的参数值。
 4. **自定义组件扫描**：自定义提取器和验证器必须放在Spring扫描路径下（标注`@Component`），否则无法被工厂类注册。
 5. **性能考虑**：请求体解析（如JSON/XML）会产生额外开销，建议仅对敏感接口启用验证。
-6. **[ParamSource.java](src/main/java/com/security/enums/ParamSource.java)**
-    - 定义参数来源的枚举类型，包括`PATH`、`BODY`、`QUERY`、`HEADER`、`COOKIE`、`SESSION`。
-    - 包含`supportSources()`方法，用于判断当前枚举值是否支持特定的参数来源，不支持其他类型的参数来源，如果自定义服务会启动失败。
-7. **[ExtractorType.java](src/main/java/com/security/enums/ExtractorType.java)**
-    - 定义参数提取器的枚举类型，包括`DEFAULT`、`JSON_PATH`、`PATH_MATCH`、`CUSTOM`。如果对相同的ParamSource提供不同解析器（CUSTOM除外），会自动覆盖默认的，
-    - 如果需要支持多个解析器，需要自己实现扩展能力
+6. **[ParamSource.java](src/main/java/com/security/enums/ParamSource.java)注意事项**
+    - 仅允许使用枚举中定义的 6 种参数来源：PATH、BODY、QUERY、HEADER、COOKIE、SESSION。 不支持任何枚举外的自定义值（如字符串字面量、未定义枚举值等），否则视为非法。
+    - 应用启动阶段会对所有配置的参数来源和提取器支持的来源进行全量校验。若存在未通过校验的非法来源（如自定义扩展未更新枚举），会导致启动失败，并在日志中明确提示错误位置和原因
+    - 特定参数来源需与对应的解析方式配合使用（如 BODY 通常搭配 JSON_PATH，PATH 搭配 PATH_MATCH）。
+    - 若来源与解析方式不匹配（如 QUERY 使用 JSON_PATH 解析），会在参数提取时返回空值或触发校验错误
+7. **[ExtractorType.java](src/main/java/com/security/enums/ExtractorType.java)注意事项**
+    - 系统通过枚举类型定义了 4 种参数提取器，分别为：
+        - DEFAULT：默认提取器（适用于 QUERY/HEADER/COOKIE 等基础参数来源）
+        - JSON_PATH：基于 JSON 路径的提取器（适用于 BODY 来源的 JSON 格式参数）
+        - PATH_MATCH：路径匹配提取器（适用于 PATH 来源的 URL 路径参数）
+        - CUSTOM：自定义提取器（用于扩展特殊场景的参数提取需求）
+    - 当多个提取器（CUSTOM除外）针对相同的 ParamSource（参数来源） 提供解析逻辑时，注册为 Spring Bean 时需通过@Order注解控制优先级：
+        - 内置提取器默认使用高优先级（如@Order(1)，数值越小优先级越高）。
+        - 自定义实现的非CUSTOM类型提取器需设置低优先级（如@Order(1000)）。
+        - 优先级规则：低优先级的提取器会自动覆盖同类型、同参数来源的高优先级内置提取器，确保自定义实现生效。
+    - 系统默认仅支持 “同类型提取器按优先级覆盖” 的逻辑。若业务需要同时启用多个同类型或同来源的提取器（如并行处理不同格式的参数），需自行扩展框架能力（例如实现提取器链、动态路由等机制）。
 
