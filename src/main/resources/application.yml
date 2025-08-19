@@ -1,0 +1,35 @@
+spring:
+  security:
+    user:
+      name: user   # 用户名（自定义，比如 user）
+      password: 123456  # 密码（自定义，比如 123456）
+
+server:
+  port: 8080
+
+api:
+  permission:
+    enabled: true  # 全局开关
+    rules:
+      - uri-pattern: "/staffs/{staffId}/logs/{id}"  # Ant风格URI
+        enabled: true  # 规则开关
+        principal-param:  # 主体参数（当前操作者标识）
+          name: "staffId"
+          source: "PATH"  # 参数来源（枚举对应值）
+          parse-method: "PATH_MATCH"  # 解析方式
+        param-rules:  # 需验证的目标参数列表
+          - param-name: "userId"
+            source: "BODY"
+            parse-method: "JSON_PATH"
+            parse-config: "$.userId"  # JSON路径表达式
+            validatorId: "staffId-userId"  # 关联验证器ID
+          - param-name: "classId"
+            source: "QUERY"
+            parse-method: "DEFAULT"
+            parse-config: ""
+            validatorId: "staffId-classId"
+          - param-name: "id"
+            source: "PATH"
+            parse-method: "PATH_MATCH"
+            validatorId: "staffId-id"
+        multi-param-mode: "ANY_MATCH"  # 多参数验证模式（枚举对应值）
