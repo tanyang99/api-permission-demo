@@ -4,6 +4,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.security.enums.ExtractorType;
 import com.security.enums.ParamSource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.ContentCachingRequestWrapper;
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 
+@Order(1)
 @Component
 @Slf4j
 public class JsonPathExtractor implements ParameterExtractor {

@@ -3,6 +3,7 @@ package com.security.extractor;
 import com.security.enums.ExtractorType;
 import com.security.enums.ParamSource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -13,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+@Order(1)
 @Component
 @Slf4j
 public class DefaultExtractor implements ParameterExtractor {

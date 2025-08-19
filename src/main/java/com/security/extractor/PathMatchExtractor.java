@@ -3,6 +3,7 @@ package com.security.extractor;
 import com.security.enums.ExtractorType;
 import com.security.enums.ParamSource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerMapping;
@@ -12,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+@Order(1)
 @Component
 @Slf4j
 public class PathMatchExtractor implements ParameterExtractor {

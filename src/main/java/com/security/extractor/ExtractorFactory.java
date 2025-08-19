@@ -7,6 +7,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 /**
  * 参数提取器工厂类：自动注册所有ParameterExtractor实现类，支持自定义扩展
  */
+@Order()
 @Component
 @Slf4j
 public class ExtractorFactory implements InitializingBean {
