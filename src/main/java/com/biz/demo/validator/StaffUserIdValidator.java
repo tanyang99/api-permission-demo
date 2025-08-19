@@ -1,7 +1,7 @@
 package com.biz.demo.validator;
 
-import com.security.context.PermissionContext;
 import com.biz.demo.service.UserRelationService;
+import com.security.context.PermissionContext;
 import com.security.validator.PermissionValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

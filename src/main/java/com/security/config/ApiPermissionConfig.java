@@ -233,6 +233,11 @@ public class ApiPermissionConfig implements InitializingBean {
         // 验证来源与解析方式的匹配性
         private boolean isValidCombination(ParamSource source, String parseMethod) {
             ExtractorType extractorType = ExtractorType.fromString(parseMethod);
+            // 自定义类型默认支持所有来源（可根据实际需求修改）
+            if (ExtractorType.CUSTOM.equals(extractorType)) {
+                return true;
+            }
+
             switch (source) {
                 case PATH:
                     return ExtractorType.DEFAULT.equals(extractorType) || ExtractorType.PATH_MATCH.equals(extractorType);
