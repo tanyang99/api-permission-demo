@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class DefaultExtractor implements ParameterExtractor {
 
-    // 缓存请求对应的Cookie Map（key: request.hashCode()，避免内存泄漏使用WeakHashMap）
     private final Map<Integer, Map<String, String>> cookieCache = new WeakHashMap<>();
 
     @Override

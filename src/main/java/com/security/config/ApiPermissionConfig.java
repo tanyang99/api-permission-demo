@@ -201,13 +201,7 @@ public class ApiPermissionConfig implements InitializingBean {
             if (source == null) {
                 errors.add("source不能为空（需指定PATH/BODY/QUERY等）");
             } else {
-                // 验证source是否为枚举中的有效值
-                for (ParamSource s : ParamSource.values()) {
-                    if (s == source) {
-                        isSourceValid = true;
-                        break;
-                    }
-                }
+                isSourceValid = ParamSource.contains(source);
                 if (!isSourceValid) {
                     errors.add("source值无效：" + source);
                 } else {
@@ -301,13 +295,7 @@ public class ApiPermissionConfig implements InitializingBean {
             if (source == null) {
                 errors.add("source不能为空（需指定PATH/BODY/QUERY等）");
             } else {
-                // 验证source是否为枚举中的有效值
-                for (ParamSource s : ParamSource.values()) {
-                    if (s == source) {
-                        isSourceValid = true;
-                        break;
-                    }
-                }
+                isSourceValid = ParamSource.contains(source);
                 if (!isSourceValid) {
                     errors.add("source值无效：" + source);
                 } else {
@@ -363,6 +351,7 @@ public class ApiPermissionConfig implements InitializingBean {
             if (ExtractorType.CUSTOM.equals(extractorType)) {
                 return true;
             }
+
             switch (source) {
                 case PATH:
                     return ExtractorType.PATH_MATCH.equals(extractorType);

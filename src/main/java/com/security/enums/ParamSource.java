@@ -2,6 +2,10 @@ package com.security.enums;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
+
 /**
  * 参数来源枚举类，定义系统可提取参数的位置（包括请求中携带的参数和服务器端会话数据），
  * 用于权限校验时指定参数的获取来源。提供配置解析的容错机制，确保非法输入时系统稳定运行。
@@ -47,6 +51,21 @@ public enum ParamSource {
      */
     SESSION;
 
+
+    /**
+     * 所有参数来源枚举值的不可变集合，用于校验参数来源的合法性
+     */
+    private static final Set<ParamSource> ALL_VALUES = Collections.unmodifiableSet(EnumSet.allOf(ParamSource.class));
+
+    /**
+     *
+     * @param source 待校验的参数来源枚举值
+     * @return true若枚举值有效，false若无效
+     */
+    public static boolean contains(ParamSource source) {
+        return ALL_VALUES.contains(source);
+    }
+
     /**
      * 将字符串解析为ParamSource枚举值，提供容错机制
      * 用于处理配置文件中可能的非法输入（如拼写错误、空值），避免因配置错误导致系统异常
@@ -70,4 +89,5 @@ public enum ParamSource {
             return QUERY;
         }
     }
+
 }
