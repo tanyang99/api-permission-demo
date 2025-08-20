@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class ApiPermissionConfig implements InitializingBean {
 
     private boolean enabled = false; // 全局开关（默认关闭）
-    private List<Rule> rules; // 规则列表（移除@Valid注解）
+    private List<Rule> rules;
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -49,32 +49,36 @@ public class ApiPermissionConfig implements InitializingBean {
         }
     }
 
-    /**
-     * 全局配置手动验证
-     */
+    // ApiPermissionConfig类中
     public List<String> validate() {
         List<String> errors = new ArrayList<>();
+        // 仅负责全局配置验证
+        validateGlobalConfig(errors);
+        // 规则验证委托给规则自身
+        validateRules(errors);
+        return errors;
+    }
 
-        // 验证规则列表非空（全局开关开启时）
+    // 全局配置验证（独立方法）
+    private void validateGlobalConfig(List<String> errors) {
         if (enabled && (rules == null || rules.isEmpty())) {
             errors.add("全局开关已开启，但未配置任何规则（rules不能为空）");
         }
+    }
 
-        // 验证每个规则
+    // 规则列表验证（独立方法）
+    private void validateRules(List<String> errors) {
         if (rules != null) {
             for (Rule rule : rules) {
-                // 为规则错误添加标识
-                List<String> ruleErrors = rule.validate().stream().map(error -> "规则[" + (rule.getUriPattern() != null ? rule.getUriPattern() : "未设置URI") + "]：" + error).collect(Collectors.toList());
+                List<String> ruleErrors = rule.validate().stream()
+                        .map(error -> "规则[" + (rule.getUriPattern() != null ? rule.getUriPattern() : "未设置URI") + "]：" + error)
+                        .collect(Collectors.toList());
                 errors.addAll(ruleErrors);
-
-                // 禁用有错误的规则
                 if (!ruleErrors.isEmpty()) {
                     rule.setEnabled(false);
                 }
             }
         }
-
-        return errors;
     }
 
     /**
@@ -82,75 +86,87 @@ public class ApiPermissionConfig implements InitializingBean {
      */
     @Data
     public static class Rule {
-        private String uriPattern; // 移除@NotBlank注解
+        private String uriPattern;
         private boolean enabled = false;
 
-        private PrincipalParam principalParam; // 移除@NotNull和@Valid注解
+        private PrincipalParam principalParam;
 
-        private List<ParamRule> paramRules; // 移除@NotEmpty和@Valid注解
+        private List<ParamRule> paramRules;
 
-        private MultiParamMode multiParamMode = MultiParamMode.ANY_MATCH; // 移除@NotNull注解
+        private MultiParamMode multiParamMode = MultiParamMode.ANY_MATCH;
 
         /**
          * 规则参数手动验证
          */
+        // Rule类中
         public List<String> validate() {
             List<String> errors = new ArrayList<>();
+            // 1. 自身属性验证（uriPattern、multiParamMode）
+            validateBasicProperties(errors);
+            // 2. 主体参数验证（委托给PrincipalParam）
+            validatePrincipalParam(errors);
+            // 3. 目标参数验证（委托给ParamRule）
+            validateParamRules(errors);
+            // 4. 跨参数验证（如重复参数名）
+            validateCrossParamConstraints(errors);
+            return errors;
+        }
 
-            // 未启用的规则也验证基础结构（避免配置完全无效）
-            if (!enabled) {
-                log.warn("规则[{}]未启用，仅验证基础配置", uriPattern);
-            }
-
-            // 1. 验证uriPattern非空及格式
+        // 1. 基础属性验证（uriPattern格式、multiParamMode）
+        private void validateBasicProperties(List<String> errors) {
             if (uriPattern == null || uriPattern.trim().isEmpty()) {
                 errors.add("uriPattern不能为空（需指定Ant风格URI，如/api/users/**）");
             } else if (!uriPattern.startsWith("/")) {
                 errors.add("uriPattern必须以/开头（Ant风格）");
             }
-
-            // 2. 验证主体参数
-            if (principalParam == null) {
-                errors.add("principalParam不能为空（需配置主体参数）");
-            } else {
-                // 为主体参数错误添加标识
-                List<String> principalErrors = principalParam.validate().stream().map(error -> "主体参数：" + error).collect(Collectors.toList());
-                errors.addAll(principalErrors);
-            }
-
-            // 3. 验证目标参数列表
-            if (paramRules == null || paramRules.isEmpty()) {
-                errors.add("paramRules不能为空（需至少配置一个目标参数规则）");
-            } else {
-                // 验证每个目标参数
-                for (ParamRule paramRule : paramRules) {
-                    if (paramRule == null) {
-                        errors.add("paramRules中存在空对象");
-                        continue;
-                    }
-                    // 为目标参数错误添加标识
-                    String paramName = paramRule.getParamName() != null ? paramRule.getParamName() : "未命名参数";
-                    List<String> paramErrors = paramRule.validate().stream().map(error -> "参数[" + paramName + "]：" + error).collect(Collectors.toList());
-                    errors.addAll(paramErrors);
-                }
-            }
-
-            // 4. 验证多参数模式
             if (multiParamMode == null) {
                 errors.add("multiParamMode不能为空（需指定ALL_MATCH/ANY_MATCH）");
             } else if (multiParamMode != MultiParamMode.ALL_MATCH && multiParamMode != MultiParamMode.ANY_MATCH) {
                 errors.add("multiParamMode必须为ALL_MATCH或ANY_MATCH，当前值：" + multiParamMode);
             }
+        }
 
-            // 5. 验证参数名重复（仅当参数列表有效时）
-            if (paramRules != null && !paramRules.isEmpty() && errors.stream().noneMatch(e -> e.contains("paramRules不能为空"))) {
-                List<String> duplicates = getDuplicateParamNames();
-                if (!duplicates.isEmpty()) {
-                    errors.add("存在重复参数名：" + duplicates);
-                }
+        // 2. 主体参数验证
+        private void validatePrincipalParam(List<String> errors) {
+            if (principalParam == null) {
+                errors.add("principalParam不能为空（需配置主体参数）");
+            } else {
+                List<String> principalErrors = principalParam.validate().stream()
+                        .map(error -> "主体参数：" + error)
+                        .collect(Collectors.toList());
+                errors.addAll(principalErrors);
             }
+        }
 
-            return errors;
+        // 3. 目标参数验证
+        private void validateParamRules(List<String> errors) {
+            if (paramRules == null || paramRules.isEmpty()) {
+                errors.add("paramRules不能为空（需至少配置一个目标参数规则）");
+                return;
+            }
+            for (ParamRule paramRule : paramRules) {
+                if (paramRule == null) {
+                    errors.add("paramRules中存在空对象");
+                    continue;
+                }
+                String paramName = paramRule.getParamName() != null ? paramRule.getParamName() : "未命名参数";
+                List<String> paramErrors = paramRule.validate().stream()
+                        .map(error -> "参数[" + paramName + "]：" + error)
+                        .collect(Collectors.toList());
+                errors.addAll(paramErrors);
+            }
+        }
+
+        // 4. 跨参数约束验证（如重复参数名）
+        private void validateCrossParamConstraints(List<String> errors) {
+            if (paramRules == null || paramRules.isEmpty()) return;
+            // 检查是否已有paramRules为空的错误，有则跳过
+            if (errors.stream().anyMatch(e -> e.contains("paramRules不能为空"))) return;
+
+            List<String> duplicates = getDuplicateParamNames();
+            if (!duplicates.isEmpty()) {
+                errors.add("存在重复参数名：" + duplicates);
+            }
         }
 
         // 获取重复的参数名
@@ -164,9 +180,9 @@ public class ApiPermissionConfig implements InitializingBean {
      */
     @Data
     public static class PrincipalParam {
-        private String name; // 移除@NotBlank注解
-        private ParamSource source; // 移除@NotNull注解
-        private String parseMethod; // 移除@NotBlank注解
+        private String name;
+        private ParamSource source;
+        private String parseMethod;
         private String parseConfig;
 
         /**
@@ -343,6 +359,10 @@ public class ApiPermissionConfig implements InitializingBean {
         // 验证来源与解析方式的匹配性
         private boolean isValidCombination(ParamSource source, String parseMethod) {
             ExtractorType extractorType = ExtractorType.fromString(parseMethod);
+            // 自定义类型默认支持所有来源（可根据实际需求修改）
+            if (ExtractorType.CUSTOM.equals(extractorType)) {
+                return true;
+            }
             switch (source) {
                 case PATH:
                     return ExtractorType.PATH_MATCH.equals(extractorType);
